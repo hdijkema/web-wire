@@ -5,6 +5,7 @@
 
 class WebWireHandler;
 class QWebEngineView;
+class WebWirePage;
 
 class WebWireWindow : public QMainWindow
 {
@@ -12,8 +13,10 @@ class WebWireWindow : public QMainWindow
 private:
     WebWireHandler   *_handler;
     QWebEngineView   *_view;
+    WebWirePage      *_page;
     int               _win;
     bool              _callback;
+    QString           _app_name;
 
 protected:
     virtual void closeEvent(QCloseEvent *evt);
@@ -27,7 +30,10 @@ public:
     void dontCallback();
 
 public:
-    explicit WebWireWindow(WebWireHandler *h, int win);
+    void setUrl(const QUrl &u);
+
+public:
+    explicit WebWireWindow(WebWireHandler *h, int win, const QString &app_name);
 
 signals:
 };

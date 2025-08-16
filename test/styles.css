@@ -1,0 +1,35 @@
+body {
+	font-family: Arial;
+	font-size: 11pt;
+}
+
+h1 {
+	color: #303030;
+}
+
+h1:hover {
+	color: #606060;
+}
+
+a {
+	text-decoration: none;
+}
+
+button.btn-1 {
+	background: #1adb4e;
+	border: 1px solid black;
+	padding: 1em;
+}
+
+button.btn-2 {
+	color: white;
+	background: #3e5c46;
+	border: 1px solid green;
+	padding: 1em;
+	margin-left: 1em;
+}
+
+button.btn-2 a {
+	color: white;
+}
+

@@ -18,6 +18,8 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS WebEngineWidgets)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS HttpServer)
 
 add_executable(web-wire
   main.cpp
@@ -25,9 +27,13 @@ add_executable(web-wire
   consolelistener.h consolelistener.cpp
   readlineinthread.h readlineinthread.cpp
   webwirewindow.h webwirewindow.cpp
+  webwirepage.h webwirepage.cpp
 )
 
-target_link_libraries(web-wire Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::WebEngineWidgets)
+target_link_libraries(web-wire Qt${QT_VERSION_MAJOR}::Core)
+target_link_libraries(web-wire Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(web-wire Qt${QT_VERSION_MAJOR}::WebEngineWidgets)
+target_link_libraries(web-wire Qt${QT_VERSION_MAJOR}::HttpServer)
 
 
 include(GNUInstallDirs)

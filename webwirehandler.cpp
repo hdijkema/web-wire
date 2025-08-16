@@ -5,6 +5,10 @@
 #include <QIODevice>
 #include <QRegularExpression>
 #include <QApplication>
+#include <QHttpServer>
+#include <QTcpServer>
+#include <QHttpServerResponse>
+#include <QWebEngineProfile>
 
 #include "consolelistener.h"
 #include "webwirewindow.h"
@@ -12,11 +16,10 @@
 #define defun(name)         static void name(QString cmd, WebWireHandler *h, const QStringList &args)
 #define r_ok(str)           h->addOk(str)
 #define r_err(str)          h->addErr(str)
-#define msg(str)            h->msg(QObject::tr(str));
+#define msg(str)            h->message(QObject::tr(str));
 #define view(win)           h->getView(win)
 #define check(cmd, vars)    h->getArgs(cmd, QList<Var>() << vars, args)
 #define var(type, v)        Var(type, v, #v)
-
 
 defun(cmdSetUrl)
 {
@@ -24,38 +27,70 @@ defun(cmdSetUrl)
     QUrl url_location;
 
     if (check("set-url", var(integer, win) << var(url, url_location))) {
-        QWebEngineView *view = view(win);
-        if (view == nullptr) {
+        WebWireWindow *w = h->getWindow(win);
+        if (w == nullptr) {
             r_err(cmd + ": window " + QString::asprintf("%d", win) + " does not exist");
             return;
         }
 
-        view->setUrl(url_location);
+        w->setUrl(url_location);
+        r_ok("set");
     }
 }
 
-defun(cmdClearCss)
+defun(cmdExecJs)
 {
-
+    int win;
+    QString code;
+    if (check("exec-js", var(integer, win) << var(string, code))) {
+       int handle = h->execJs(win, code);
+        if (handle == 0) {
+           r_err(cmd + ": cannot execute code");
+           return;
+        } else {
+            r_ok(QString::asprintf("%d", handle));
+        }
+    }
 }
 
-defun(cmdClearScripts)
-{
-
-}
-
-defun(cmdAddCss)
-{
-
-}
-
-defun(cmdAddScript)
-{
-
-}
 
 defun(cmdSetHtml)
 {
+    int win;
+    QString file;
+    if (check("set-html", var(integer, win) << var(string, file))) {
+        QFile f(file);
+        if (f.exists()) {
+            if (f.isReadable()) {
+                r_err(QString("file ") + file + " is not readable");
+            } else {
+#ifdef Q_OS_WIN
+                //static QRegularExpression re_drive("^[A-Za-z][:]");
+                //QRegularExpressionMatch m = re_drive.match(file);
+                //if (m.hasMatch()) {
+                //    file = "/" + file;
+                //}
+#endif
+                WebWireWindow *w = h->getWindow(win);
+                if (w == nullptr) {
+                    r_err(cmd + ": window " + QString::asprintf("%d", win) + " does not exist");
+                    return;
+                }
+
+                WinInfo_t *i = h->getWinInfo(win);
+                QString base_url = i->base_url;
+                QString url = base_url + file;
+                QUrl u(url);
+                QString p_url = u.toString();
+                h->message(QString("requesting: ") + p_url);
+
+                w->setUrl(u);
+            }
+        } else {
+            r_err(QString("file ") + file + " does not exist");
+        }
+
+    }
 
 }
 
@@ -75,7 +110,13 @@ defun(cmdHelp)
     msg("resize win <width> <height> - resizes window <win> to width, height");
     msg("set-title <title> - sets the window title");
     msg("set-icon <file path:<png|jpg|svg>> - sets the window icon to this bitmap file");
-    msg("")
+    msg("");
+    //msg("add-css <win> <marker> - add css for <win>. The next lines until <marker> will be put into a css container");
+    //msg("clear-css <win> - clear all added css for <win>");
+    //msg("add-script <win> <marker> - add javascript scripting for <win>. The next lines until <marker> will be put into a scripting container");
+    //msg("clear-scripts <win> - clear all added scripts for <win>");
+    msg("set-html <win> <file> - set the html of the web-wire window <win> to file <file>.");
+    msg("");
     msg("exit - exit web racket");
 
     h->addOk("help given");
@@ -125,10 +166,15 @@ defun(cmdSetIcon)
 
 defun(cmdNewWindow)
 {
-    int win = h->newWindow();
-    r_ok(QString::asprintf("%d", win));
+    QString app_name;
+    if (check("new", var(string, app_name))) {
+        int win = h->newWindow(app_name);
+        r_ok(QString::asprintf("%d", win));
+    }
 }
 
+#undef msg
+#undef view
 
 #define fun(kind, name) if (cmd == kind) { name(cmd, this, args); }
 #define efun(kind, name) else if (cmd == kind) { name(cmd, this, args); }
@@ -144,11 +190,8 @@ void WebWireHandler::processCommand(const QString &cmd, const QStringList &args)
     efun("set-title", cmdSetTitle)
     efun("set-icon", cmdSetIcon)
     efun("new", cmdNewWindow)
-        efun("clear-css", cmdClearCss)
-        efun("clear-scripts", cmdClearScripts)
-        efun("add-css", cmdAddCss)
-        efun("add-script", cmdAddScript)
-        efun("set-html", cmdSetHtml)
+    efun("set-html", cmdSetHtml)
+    efun("exec-js", cmdExecJs)
     else {
         WebWireHandler *h = this;
         r_err(QString::asprintf("Unknown command '%s'", cmd.toUtf8().data()));
@@ -165,16 +208,19 @@ void WebWireHandler::addOk(const QString &msg)
     _responses.append(msg);
 }
 
-#undef msg
-
 void WebWireHandler::msg(const QString &msg)
+{
+    message(msg);
+}
+
+void WebWireHandler::message(const QString &msg)
 {
     fprintf(_log_fh, "%s\n", msg.toUtf8().data());
     fprintf(stderr, "%s\n", msg.toUtf8().data());
     fflush(stderr);
 }
 
-static QStringList splitArgs(QString l)
+QStringList WebWireHandler::splitArgs(QString l)
 {
     int from = 0;
     int i, N;
@@ -197,6 +243,7 @@ static QStringList splitArgs(QString l)
                     from = i;
                 } else {
                     i++;
+                    prev_escape = false;
                 }
             } else {
                 in_str = true;
@@ -204,16 +251,22 @@ static QStringList splitArgs(QString l)
                 from = i;
             }
         } else if (l[i] == '\\') {
-            if (in_str) {
-                prev_escape = true;
-            }
+            if (in_str) { prev_escape = true; }
             i++;
         } else {
+            if (in_str) { prev_escape = false; }
             i++;
         }
     }
     if (from != N) {
         r.append(l.mid(from));
+    }
+
+    {
+        int i;
+        for(i = 0; i < r.size(); i++) {
+            msg(r[i]);
+        }
     }
 
     return r;
@@ -227,7 +280,7 @@ void WebWireHandler::processInput(const QString &line)
     QString l = line.trimmed();
     QStringList expr = splitArgs(l);
 
-    if (expr.last() == "") {
+    if (!expr.empty() && expr.last() == "") {
         expr.removeLast();
     }
     if (expr.size() > 0) {
@@ -327,6 +380,17 @@ WebWireHandler::WebWireHandler(QApplication *app, int argc, char *argv[]) : QObj
     _listener = new ConsoleListener(this);
     connect(_listener, &ConsoleListener::newLine, this, &WebWireHandler::processInput);
     _window_nr = 0;
+    _code_handle = 0;
+
+    _server = new QHttpServer(this);
+    QTcpServer *tcp_server = new QTcpServer(_server);
+    bool listens = tcp_server->listen(QHostAddress("127.0.0.1"));
+    if (!listens) {
+        _port = -1;
+    } else {
+        _port = tcp_server->serverPort();
+        _server->bind(tcp_server);
+    }
 
     QDir tmp_dir(QDir::temp());
     QDir wr_dir = QDir(tmp_dir.absoluteFilePath("web-wire"));
@@ -340,6 +404,14 @@ WebWireHandler::WebWireHandler(QApplication *app, int argc, char *argv[]) : QObj
 
     msg("Web Racket file store: " + _my_dir.absolutePath());
     msg("Web Racket log file: " + log_file);
+    if (!listens) {
+        evt("no-http-service");
+    } else {
+        msg(QString::asprintf("Web Racket Http Server on http://127.0.0.1:%d", _port));
+    }
+
+    _server->router()->clearConverters();
+    _server->router()->addConverter(QMetaType(QMetaType::QString), ".*");
 }
 
 WebWireHandler::~WebWireHandler()
@@ -421,7 +493,7 @@ void WebWireHandler::handleTimer(void)
     }
 }
 
-int WebWireHandler::newWindow()
+int WebWireHandler::newWindow(const QString &app_name)
 {
     ++_window_nr;
 
@@ -434,9 +506,29 @@ int WebWireHandler::newWindow()
     WinInfo_t *i = new WinInfo_t();
     _infos[_window_nr] = i;
 
+    i->app_name = app_name;
 
-    WebWireWindow *w = new WebWireWindow(this, _window_nr);
+    static QRegularExpression re_ws("\\s+");
+    QString app_internal_name = app_name.trimmed().replace(re_ws, "_");
+    i->base_url = QString::asprintf("http://127.0.0.1:%d/", _port) + app_internal_name + "/";
+
+    i->profile = new QWebEngineProfile(app_internal_name);
+
+    WebWireWindow *w = new WebWireWindow(this, _window_nr, app_name);
     _windows[_window_nr] = w;
+
+    QHttpServerRouterRule *rule = _server->route("/" + app_internal_name + "/<arg>", this, [this](const QString &file) {
+        this->msg("Serving: " + file);
+        QFile f(file);
+        if (f.exists()) {
+            return QHttpServerResponse::fromFile(file);
+        } else {
+            QHttpServerResponse resp(QHttpServerResponse::StatusCode::NotFound);
+            return resp;
+        }
+    });
+
+    i->rule = rule;
 
     w->show();
 
@@ -449,8 +541,18 @@ WebWireWindow *WebWireHandler::getWindow(int win)
         WebWireWindow *w = _windows[win];
         return w;
     } else {
-        _reasons.append("Window %d not found");
+        _reasons.append(QString::asprintf("Window %d not found", win));
        return nullptr;
+    }
+}
+
+WinInfo_t *WebWireHandler::getWinInfo(int win)
+{
+    if (_infos.contains(win)) {
+        return _infos[win];
+    } else {
+        _reasons.append(QString::asprintf("Windows Info for window %d not there, unexpected!", win));
+        return nullptr;
     }
 }
 
@@ -489,7 +591,43 @@ bool WebWireHandler::setWindowIcon(int win, const QIcon &icn)
     return w != nullptr;
 }
 
-#undef view
+class ExecJs
+{
+private:
+    WebWireHandler *_handler;
+    int             _handle;
+    int             _win;
+public:
+    void run(QWebEnginePage *p, const QString &code) {
+        p->runJavaScript(code, [this](const QVariant &v) {
+            QString result = v.toString().replace("\"", "\\\"");
+            _handler->evt(QString::asprintf("exec-js-result: %d %d ", _win, _handle) + QString("\"") + result + QString("\""));
+            delete this;
+        });
+    }
+    ExecJs(WebWireHandler *handler, int win, int handle) {
+        _handler = handler;
+        _handle = handle;
+        _win = win;
+    }
+};
+
+int WebWireHandler::execJs(int win, const QString &code)
+{
+    WebWireWindow *w = getWindow(win);
+    if (w != nullptr) {
+        QWebEngineView *v = w->view();
+        QWebEnginePage *p = v->page();
+        _code_handle += 1;
+        if (_code_handle == 0) { _code_handle += 1; }
+        ExecJs *e = new ExecJs(this, win, ++_code_handle);
+        e->run(p, code);
+        return _code_handle;
+    } else {
+        return 0;
+    }
+}
+
 QWebEngineView *WebWireHandler::getView(int win)
 {
     WebWireWindow *w = getWindow(win);
@@ -501,4 +639,17 @@ void WebWireHandler::start()
 {
     _listener->start();
     ok("WebWireHandler v0.1 started");
+}
+
+WinInfo_t::WinInfo_t() {
+    size_set = false;
+    pos_set = false;
+    profile = nullptr;
+    rule = nullptr;
+}
+
+WinInfo_t::~WinInfo_t() {
+    if (profile != nullptr) {
+        delete profile;
+    }
 }

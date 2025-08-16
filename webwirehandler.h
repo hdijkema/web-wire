@@ -8,6 +8,9 @@ class QTimer;
 class QIODevice;
 class ConsoleListener;
 class WebWireWindow;
+class QHttpServer;
+class QHttpServerRouterRule;
+class QWebEngineProfile;
 
 #include <QHash>
 #include <QSize>
@@ -44,11 +47,13 @@ public:
     bool   size_set;
     QPoint pos;
     bool   pos_set;
+    QString app_name;
+    QHttpServerRouterRule *rule;
+    QString base_url;
+    QWebEngineProfile *profile;
 public:
-    WinInfo_t() {
-        size_set = false;
-        pos_set = false;
-    }
+    WinInfo_t();
+    ~WinInfo_t();
 };
 
 class WebWireHandler : public QObject
@@ -60,12 +65,19 @@ private:
     QHash<int, WinInfo_t *>       _infos;
 
     int                           _window_nr;
+    int                           _code_handle;
     ConsoleListener              *_listener;
     QStringList                   _reasons;
     QStringList                   _responses;
     QApplication                 *_app;
     FILE                         *_log_fh;
     QDir                          _my_dir;
+
+    QHttpServer                  *_server;
+    int                           _port;
+
+private:
+    QStringList splitArgs(QString l);
 
 private slots:
     void processInput(const QString &line);
@@ -81,36 +93,41 @@ public:
     void windowResized(int win, int w, int h);
     void windowMoved(int win, int x, int y);
 
+    // WebWire Command handling
 public:
-    QWebEngineView *getView(int win);
-    int newWindow();
+    int newWindow(const QString &app_name);
     bool closeWindow(int win);
     bool moveWindow(int win, int x, int y);
     bool resizeWindow(int win, int w, int h);
     bool setWindowTitle(int win, const QString &title);
     bool setWindowIcon(int win, const QIcon &icn);
+    int execJs(int win, const QString &code);
 
-private:
+    // WebWire internal
+public:
+    QWebEngineView *getView(int win);
     WebWireWindow *getWindow(int win);
+    WinInfo_t *getWinInfo(int win);
 
-public:
-    void start();
-
-protected:
-    void processCommand(const QString &cmd, const QStringList &args);
-
-public:
     void addErr(const QString &msg);
     void addOk(const QString &msg);
 
     void msg(const QString &msg);
+    void message(const QString &msg);
     void error(const QString &msg);
     void ok(const QString &msg);
     void evt(const QString &msg);
 
     void closeListener();
     void doQuit();
+
     bool getArgs(QString cmd, QList<Var> types, QStringList args);
+
+public:
+    void start();
+
+protected:
+    void processCommand(const QString &cmd, const QStringList &args);
 };
 
 #endif // WEBWIREHANDLER_H
