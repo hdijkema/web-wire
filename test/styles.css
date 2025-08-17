@@ -33,3 +33,22 @@ button.btn-2 a {
 	color: white;
 }
 
+table {
+	margin: 1em;
+	border: 1px solid black;
+	border-collapse: collapse;
+}
+
+table td {
+	border: 1px solid #909090;
+	padding: 0.5em;
+	width: 70%;
+}
+
+table th {
+	border-collapse: collapse;
+	border: 1px solid #909090;
+	padding: 0.5em;
+	width: 30%;
+}
+
