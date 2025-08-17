@@ -8,18 +8,20 @@
 
 class WebWireHandler;
 class WebWirePage;
+class WebWireProfile;
 
 class WebWireView : public QWebEngineView
 {
     Q_OBJECT
 private:
     int             _handle_nr;
+    int             _current_handle_nr;
     WebWireHandler *_handler;
     WebWirePage    *_page;
     int             _win;
 
 public:
-    WebWireView(QWebEngineProfile *profile, int win, WebWireHandler *h, QWidget *parent);
+    WebWireView(WebWireProfile *profile, int win, WebWireHandler *h, QWidget *parent);
 
 public:
     int setUrl(const QUrl &u);

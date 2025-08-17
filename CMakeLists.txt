@@ -32,6 +32,8 @@ add_executable(web-wire
   webwirepage.h webwirepage.cpp
   webwireview.h webwireview.cpp
   webwireprofile.h webwireprofile.cpp
+  execjs.h execjs.cpp
+  webwire.h
 )
 
 target_link_libraries(web-wire Qt${QT_VERSION_MAJOR}::Core)

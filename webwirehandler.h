@@ -9,13 +9,16 @@ class QIODevice;
 class ConsoleListener;
 class WebWireWindow;
 class QHttpServer;
-class QHttpServerRouterRule;
 class QWebEngineProfile;
+class QApplication;
+class WebWireProfile;
+class WebWireView;
 
 #include <QHash>
 #include <QSize>
 #include <QPoint>
 #include <QDir>
+#include <QUrl>
 
 typedef enum {
     integer,
@@ -31,26 +34,27 @@ public:
     VarType  type;
     int     *i;
     QString *s;
-    QBitmap *b;
     QUrl    *u;
+    int      d_i;
+    QString  d_s;
+    QUrl     d_u;
+    bool     optional;
 public:
-    Var(VarType t, int &v, const char *vname) { i = &v; type = t; name = vname; }
-    Var(VarType t, QString &v, const char *vname) { s = &v; type = t; name = vname; }
-    Var(VarType t, QBitmap *v, const char *vname) { b = v; type = t; name = vname; }
-    Var(VarType t, QUrl &v, const char *vname) { u = &v; type = t; name = vname; }
+    Var(VarType t, int &v, const char *vname, bool o = false, int d = 0) { i = &v; type = t; name = vname; optional = o;d_i = d; }
+    Var(VarType t, QString &v, const char *vname, bool o = false, QString d = QString("")) { s = &v; type = t; name = vname; optional = o;d_s = d; }
+    Var(VarType t, QUrl &v, const char *vname, bool o = false, QUrl d = QUrl()) { u = &v; type = t; name = vname; optional = o;d_u = d; }
 };
 
 class WinInfo_t
 {
 public:
-    QSize  size;
-    bool   size_set;
-    QPoint pos;
-    bool   pos_set;
-    QString app_name;
-    QHttpServerRouterRule *rule;
-    QString base_url;
-    QWebEngineProfile *profile;
+    QSize           size;
+    bool            size_set;
+    QPoint          pos;
+    bool            pos_set;
+    QString         app_name;
+    QString         base_url;
+    WebWireProfile *profile;
 public:
     WinInfo_t();
     ~WinInfo_t();
@@ -105,7 +109,7 @@ public:
 
     // WebWire internal
 public:
-    QWebEngineView *getView(int win);
+    WebWireView *getView(int win);
     WebWireWindow *getWindow(int win);
     WinInfo_t *getWinInfo(int win);
 

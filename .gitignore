@@ -42,3 +42,7 @@
 
 # Qt Creator compiled folders
 build
+
+# Qt user/project specific cmake files
+CMakeLists.txt.user
+
