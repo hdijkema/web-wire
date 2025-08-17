@@ -45,4 +45,5 @@ build
 
 # Qt user/project specific cmake files
 CMakeLists.txt.user
+CMakeLists.txt.user.*
 
