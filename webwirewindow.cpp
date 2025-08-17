@@ -1,6 +1,7 @@
 #include "webwirewindow.h"
 #include "webwirehandler.h"
 #include "webwirepage.h"
+#include "webwireview.h"
 
 #include <QWebEngineView>
 #include <QResizeEvent>
@@ -26,7 +27,7 @@ void WebWireWindow::moveEvent(QMoveEvent *evt)
     _handler->windowMoved(_win, p.x(), p.y());
 }
 
-QWebEngineView *WebWireWindow::view()
+WebWireView *WebWireWindow::view()
 {
     return _view;
 }
@@ -36,10 +37,10 @@ void WebWireWindow::dontCallback()
     _callback = false;
 }
 
-void WebWireWindow::setUrl(const QUrl &u)
+int WebWireWindow::setUrl(const QUrl &u)
 {
-    _page->acceptNextNavigation();
-    _view->setUrl(u);
+    _view->acceptNextNavigation();
+    return _view->setUrl(u);
 }
 
 WebWireWindow::WebWireWindow(WebWireHandler *h, int win, const QString &app_name) : QMainWindow()
@@ -50,10 +51,8 @@ WebWireWindow::WebWireWindow(WebWireHandler *h, int win, const QString &app_name
 
     WinInfo_t *i = _handler->getWinInfo(_win);
 
-    _view = new QWebEngineView(i->profile, this);
+    _view = new WebWireView(i->profile, _win, h, this);
 
-    _page = new WebWirePage(this, win, h, i->profile);
-    _view->setPage(_page);
 
     this->setCentralWidget(_view);
 }

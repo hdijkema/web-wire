@@ -17,6 +17,7 @@ private:
 
 public:
     void acceptNextNavigation();
+    WebWirePage *page();
 
 public:
     WebWirePage(QWidget *parent, int win, WebWireHandler *handler, QWebEngineProfile *profile);

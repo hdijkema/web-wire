@@ -4,7 +4,7 @@
 #include <QMainWindow>
 
 class WebWireHandler;
-class QWebEngineView;
+class WebWireView;
 class WebWirePage;
 
 class WebWireWindow : public QMainWindow
@@ -12,7 +12,7 @@ class WebWireWindow : public QMainWindow
     Q_OBJECT
 private:
     WebWireHandler   *_handler;
-    QWebEngineView   *_view;
+    WebWireView      *_view;
     WebWirePage      *_page;
     int               _win;
     bool              _callback;
@@ -24,13 +24,13 @@ protected:
     virtual void moveEvent(QMoveEvent *evt);
 
 public:
-    QWebEngineView *view();
+    WebWireView *view();
 
 public:
     void dontCallback();
 
 public:
-    void setUrl(const QUrl &u);
+    int setUrl(const QUrl &u);
 
 public:
     explicit WebWireWindow(WebWireHandler *h, int win, const QString &app_name);

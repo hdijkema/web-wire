@@ -12,6 +12,9 @@
 
 #include "consolelistener.h"
 #include "webwirewindow.h"
+#include "webwireview.h"
+#include "webwirepage.h"
+
 
 #define defun(name)         static void name(QString cmd, WebWireHandler *h, const QStringList &args)
 #define r_ok(str)           h->addOk(str)
@@ -64,13 +67,6 @@ defun(cmdSetHtml)
             if (f.isReadable()) {
                 r_err(QString("file ") + file + " is not readable");
             } else {
-#ifdef Q_OS_WIN
-                //static QRegularExpression re_drive("^[A-Za-z][:]");
-                //QRegularExpressionMatch m = re_drive.match(file);
-                //if (m.hasMatch()) {
-                //    file = "/" + file;
-                //}
-#endif
                 WebWireWindow *w = h->getWindow(win);
                 if (w == nullptr) {
                     r_err(cmd + ": window " + QString::asprintf("%d", win) + " does not exist");
@@ -84,7 +80,8 @@ defun(cmdSetHtml)
                 QString p_url = u.toString();
                 h->message(QString("requesting: ") + p_url);
 
-                w->setUrl(u);
+                int handle = w->setUrl(u);
+                r_ok(QString::asprintf("%d", handle));
             }
         } else {
             r_err(QString("file ") + file + " does not exist");
@@ -518,7 +515,7 @@ int WebWireHandler::newWindow(const QString &app_name)
     _windows[_window_nr] = w;
 
     QHttpServerRouterRule *rule = _server->route("/" + app_internal_name + "/<arg>", this, [this](const QString &file) {
-        this->msg("Serving: " + file);
+        this->message("Serving: " + file);
         QFile f(file);
         if (f.exists()) {
             return QHttpServerResponse::fromFile(file);
@@ -616,8 +613,8 @@ int WebWireHandler::execJs(int win, const QString &code)
 {
     WebWireWindow *w = getWindow(win);
     if (w != nullptr) {
-        QWebEngineView *v = w->view();
-        QWebEnginePage *p = v->page();
+        WebWireView *v = w->view();
+        WebWirePage *p = v->page();
         _code_handle += 1;
         if (_code_handle == 0) { _code_handle += 1; }
         ExecJs *e = new ExecJs(this, win, ++_code_handle);
