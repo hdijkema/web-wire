@@ -15,21 +15,24 @@ WebWireView::WebWireView(WebWireProfile *profile, int win, WebWireHandler *h, QW
     _page = new WebWirePage(this, win, h, profile);
     setPage(_page);
 
+    this->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+
     connect(_page, &WebWirePage::loadFinished, this, &WebWireView::urlProcessed);
 }
 
-int WebWireView::setUrl(const QUrl &u)
+int WebWireView::setUrl(const QUrl &u, int handle)
 {
-    int handle = ++_handle_nr;
+    //int handle = ++_handle_nr;
+    int r_handle = handle;
     _current_handle_nr = handle;
     QWebEngineView::setUrl(u);
-    return handle;
+    return r_handle;
 }
 
 void WebWireView::urlProcessed(bool ok)
 {
     if (_current_handle_nr > 0) {
-        _handler->evt(QString::asprintf("set-html/url-processed: %d %d %s", _win, _current_handle_nr, ok ? "true" : "false"));
+        _handler->evt(QString::asprintf("page-loaded:%d:%d:%s", _win, _current_handle_nr, ok ? "true" : "false"));
         _current_handle_nr = -1;
     }
 }

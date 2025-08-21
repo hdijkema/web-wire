@@ -42,7 +42,7 @@ void ReadLineInThread::run()
         FD_ZERO(&read_set);
         FD_SET(fileno(stdin), &read_set);
         tv.tv_sec = 0;
-        tv.tv_usec = 100 * 1000;    // 100 ms
+        tv.tv_usec = 25 * 1000;    // 25 ms
         int retval = select(1, &read_set, NULL, NULL, &tv);
         if (retval == -1) {
             perror("select()");

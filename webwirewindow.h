@@ -30,10 +30,10 @@ public:
     void dontCallback();
 
 public:
-    int setUrl(const QUrl &u);
+    int setUrl(const QUrl &u, int handle);
 
 public:
-    explicit WebWireWindow(WebWireHandler *h, int win, const QString &app_name);
+    explicit WebWireWindow(WebWireHandler *h, int win, const QString &app_name, WebWireWindow *parent = nullptr);
 
 signals:
 };

@@ -37,24 +37,26 @@ void WebWireWindow::dontCallback()
     _callback = false;
 }
 
-int WebWireWindow::setUrl(const QUrl &u)
+int WebWireWindow::setUrl(const QUrl &u, int handle)
 {
     _view->acceptNextNavigation();
-    return _view->setUrl(u);
+    return _view->setUrl(u, handle);
 }
 
-WebWireWindow::WebWireWindow(WebWireHandler *h, int win, const QString &app_name) : QMainWindow()
+WebWireWindow::WebWireWindow(WebWireHandler *h, int win, const QString &app_name, WebWireWindow *parent)
+    : QMainWindow(parent)
 {
     _callback = true;
     _handler = h;
     _win = win;
 
     WinInfo_t *i = _handler->getWinInfo(_win);
-
     _view = new WebWireView(i->profile, _win, h, this);
-
-
     this->setCentralWidget(_view);
+
+    if (parent != nullptr) { // this will be a modal dialog window
+        this->setWindowModality(Qt::WindowModality::WindowModal);
+    }
 }
 
 

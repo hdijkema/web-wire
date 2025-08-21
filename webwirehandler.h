@@ -13,6 +13,8 @@ class QWebEngineProfile;
 class QApplication;
 class WebWireProfile;
 class WebWireView;
+class QMenuBar;
+class QMenu;
 
 #include <QHash>
 #include <QSize>
@@ -23,6 +25,7 @@ class WebWireView;
 typedef enum {
     integer,
     string,
+    json_string,
     bitmap,
     url
 } VarType;
@@ -64,24 +67,28 @@ class WebWireHandler : public QObject
 {
     Q_OBJECT
 private:
-    QHash<int, WebWireWindow *> _windows;
-    QHash<int, QTimer *>          _timers;
-    QHash<int, WinInfo_t *>       _infos;
+    QHash<int, WebWireWindow *>      _windows;
+    QHash<int, QTimer *>             _timers;
+    QHash<int, WinInfo_t *>          _infos;
+    QHash<QString, WebWireProfile *> _profiles;
 
-    int                           _window_nr;
-    int                           _code_handle;
-    ConsoleListener              *_listener;
-    QStringList                   _reasons;
-    QStringList                   _responses;
-    QApplication                 *_app;
-    FILE                         *_log_fh;
-    QDir                          _my_dir;
+    int                              _window_nr;
+    int                              _code_handle;
+    ConsoleListener                 *_listener;
+    QStringList                      _reasons;
+    QStringList                      _responses;
+    QApplication                    *_app;
+    FILE                            *_log_fh;
+    QDir                             _my_dir;
 
-    QHttpServer                  *_server;
-    int                           _port;
+    QHttpServer                     *_server;
+    int                              _port;
 
 private:
+    void log(FILE *fh, FILE *log_fh, const char *format, const char *msg);
     QStringList splitArgs(QString l);
+    bool makeMenuBar(int win, QMenuBar *b, QJsonArray &a);
+    bool makeSubMenu(int win, QMenu *m, QJsonArray &a);
 
 private slots:
     void processInput(const QString &line);
@@ -99,13 +106,15 @@ public:
 
     // WebWire Command handling
 public:
-    int newWindow(const QString &app_name);
+    int newWindow(const QString &app_name, int parent_win_id = -1);
     bool closeWindow(int win);
+    void debugWin(int win);
     bool moveWindow(int win, int x, int y);
     bool resizeWindow(int win, int w, int h);
     bool setWindowTitle(int win, const QString &title);
     bool setWindowIcon(int win, const QIcon &icn);
-    int execJs(int win, const QString &code);
+    bool setMenu(int win, const QString &menu);
+    int execJs(int win, int handle, const QString &code, bool is_void = false, QString tag = "exec-js");
 
     // WebWire internal
 public:
@@ -115,9 +124,10 @@ public:
 
     void addErr(const QString &msg);
     void addOk(const QString &msg);
-
+    void addNOk(const QString &msg);
     void msg(const QString &msg);
     void message(const QString &msg);
+
     void error(const QString &msg);
     void ok(const QString &msg);
     void evt(const QString &msg);
@@ -125,7 +135,7 @@ public:
     void closeListener();
     void doQuit();
 
-    bool getArgs(QString cmd, QList<Var> types, QStringList args);
+    bool getArgs(QString cmd, int win, QList<Var> types, QStringList args);
 
 public:
     void start();

@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QWebEngineProfile>
+#include <QWebEngineScript>
 #include <QWidget>
 
 class WebWireHandler;
@@ -14,34 +15,49 @@ class WebWireProfile : public QWebEngineProfile
 {
     Q_OBJECT
 private:
+    QString _profile_name;
+
+private:
     QString _set_html_name;
     QString _get_html_name;
     QString _set_attr_name;
     QString _get_attr_name;
     QString _del_attr_name;
+    QString _add_style_name;
     QString _set_style_name;
     QString _get_style_name;
 
 private:
     int _world_id;
+    QString _css;
+    QWebEngineScript _css_script;
 
 private:
     QString esc(const QString &in);
-    int exec(WebWireHandler *h, int win, const QString &name, const QString &js);
+    int exec(WebWireHandler *h, int win, int handle, const QString &name, const QString &js);
 
 public:
-    explicit WebWireProfile(const QString &name, QObject *parent = nullptr);
+    explicit WebWireProfile(const QString &name, const QString &default_css, QObject *parent = nullptr);
 
 public:
-    int set_html(WebWireHandler *h, int win, const QString &element_id, const QString &html, bool fetch);
-    int get_html(WebWireHandler *h, int win, const QString &element_id);
+    void decUsage();
+    void incUsage();
+    int  usage();
+    QString profileName();
 
-    int set_attr(WebWireHandler *h, int win, const QString &element_id, const QString &attr, const QString &val);
-    int get_attr(WebWireHandler *h, int win, const QString &element_id, const QString &attr);
-    int del_attr(WebWireHandler *h, int win, const QString &element_id, const QString &attr);
+public:
+    int set_html(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &html, bool fetch);
+    int get_html(WebWireHandler *h, int win, int handle, const QString &element_id);
 
-    int set_style(WebWireHandler *h, int win, const QString &element_id, const QString &style);
-    int get_style(WebWireHandler *h, int win, const QString &element_id);
+    int set_attr(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &attr, const QString &val);
+    int get_attr(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &attr);
+    int del_attr(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &attr);
+
+    int add_style(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &style);
+    int set_style(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &style);
+    int get_style(WebWireHandler *h, int win, int handle, const QString &element_id);
+
+    int set_css(WebWireHandler *h, int win, int handle, const QString &css);
 };
 
 #endif // WEBWIREPROFILE_H

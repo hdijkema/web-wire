@@ -24,7 +24,7 @@ public:
     WebWireView(WebWireProfile *profile, int win, WebWireHandler *h, QWidget *parent);
 
 public:
-    int setUrl(const QUrl &u);
+    int setUrl(const QUrl &u, int handle);
 
 public:
     void acceptNextNavigation();

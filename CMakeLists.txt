@@ -22,6 +22,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 find_package(Qt6 REQUIRED COMPONENTS HttpServer)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 add_executable(web-wire
   main.cpp
@@ -34,6 +35,9 @@ add_executable(web-wire
   webwireprofile.h webwireprofile.cpp
   execjs.h execjs.cpp
   webwire.h
+  default_css.h
+  default_css.cpp
+  devtoolswindow.h devtoolswindow.cpp
 )
 
 target_link_libraries(web-wire Qt${QT_VERSION_MAJOR}::Core)

@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QWebEnginePage>
 #include <QWidget>
+#include <QTimer>
 
 class QWebEngineProfile;
 class WebWireHandler;
@@ -14,6 +15,7 @@ private:
     WebWireHandler *_handler;
     int             _win;
     bool            _accept_next_navigation;
+    QTimer          _evt_timer;
 
 public:
     void acceptNextNavigation();
@@ -25,6 +27,11 @@ public:
     // QWebEnginePage interface
 protected:
     bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame);
+
+private slots:
+    void getEvents();
+    void startTimer(bool ok);
+    void stopTimer();
 };
 
 #endif // WEBWIREPAGE_H
