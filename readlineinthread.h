@@ -21,6 +21,8 @@ public:
 
 signals:
     void haveALine(QString l);
+    void haveEof();
+    void haveError(int error_number);
 
     // QThread interface
 protected:

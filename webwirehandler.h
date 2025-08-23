@@ -27,7 +27,8 @@ typedef enum {
     string,
     json_string,
     bitmap,
-    url
+    url,
+    boolean
 } VarType;
 
 class Var
@@ -36,14 +37,17 @@ public:
     QString  name;
     VarType  type;
     int     *i;
+    bool    *b;
     QString *s;
     QUrl    *u;
     int      d_i;
+    bool     d_b;
     QString  d_s;
     QUrl     d_u;
     bool     optional;
 public:
     Var(VarType t, int &v, const char *vname, bool o = false, int d = 0) { i = &v; type = t; name = vname; optional = o;d_i = d; }
+    Var(VarType t, bool &v, const char *vname, bool o = false, bool d = false) { b = &v; type = t; name = vname; optional = o;d_b = d; }
     Var(VarType t, QString &v, const char *vname, bool o = false, QString d = QString("")) { s = &v; type = t; name = vname; optional = o;d_s = d; }
     Var(VarType t, QUrl &v, const char *vname, bool o = false, QUrl d = QUrl()) { u = &v; type = t; name = vname; optional = o;d_u = d; }
 };
@@ -92,6 +96,7 @@ private:
 
 private slots:
     void processInput(const QString &line);
+    void inputStopped();
     void handleTimer();
 
 public:
@@ -103,6 +108,7 @@ public:
     void windowCloses(int win, bool do_close = false);
     void windowResized(int win, int w, int h);
     void windowMoved(int win, int x, int y);
+    void requestClose(int win);
 
     // WebWire Command handling
 public:
@@ -114,6 +120,13 @@ public:
     bool setWindowTitle(int win, const QString &title);
     bool setWindowIcon(int win, const QIcon &icn);
     bool setMenu(int win, const QString &menu);
+    void setShowState(int win, const QString &state);
+    QString showState(int win);
+
+    QString fileOpen(int win, const QString &title, const QString &dir, const QString &file_types, bool &ok);
+    QString fileSave(int win, const QString &title, const QString &dir, const QString &file_types, bool overwrite, bool &ok);
+    QString chooseDir(int win, const QString &title, const QString &dir, bool &ok);
+
     int execJs(int win, int handle, const QString &code, bool is_void = false, QString tag = "exec-js");
 
     // WebWire internal
@@ -134,6 +147,8 @@ public:
 
     void closeListener();
     void doQuit();
+    void setStylesheet(const QString &css);
+    QString getStylesheet();
 
     bool getArgs(QString cmd, int win, QList<Var> types, QStringList args);
 

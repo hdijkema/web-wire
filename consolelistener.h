@@ -20,9 +20,12 @@ public:
 signals:
     // connect to "newLine" to receive console input
     void newLine(const QString &strNewLine);
+    void stopped();
 
 private slots:
     void processLine(QString l);
+    void haveEof();
+    void haveError(int err);
 };
 
 #endif // CONSOLELISTENER_H

@@ -99,10 +99,10 @@ bool WebWirePage::acceptNavigationRequest(const QUrl &url, NavigationType type, 
         //QString click = m.captured(1);
         QString id = m.captured(2);
         id = id.replace("\"", "\\\"");
-        _handler->evt(QString::asprintf("click:%d ", _win) + QString("\"") + id + "\"");
+        _handler->evt(QString::asprintf("click:%d:", _win) + QString("\"") + id + "\"");
     } else {
         QString u = url.toString().replace("\"", "\\\"");
-        _handler->evt(QString("navigate:") + QString::asprintf("%d ", _win) + "\"" + u + "\" " + navigation_type);
+        _handler->evt(QString("navigate:") + QString::asprintf("%d:", _win) + "\"" + u + "\":" + navigation_type);
     }
 
     return false;

@@ -35,6 +35,19 @@ void ReadLineInThread::run()
         bool have_line = false;
 #ifdef Q_OS_WIN
         s = fgets(_buffer, _buffer_len, stdin);
+
+        // Check for null and eof and errors
+        if (s == NULL) {
+            // something has happened
+            if (feof(stdin)) {
+                emit haveEof();
+                _go_on = false;
+            } else {
+                emit haveError(errno);
+                _go_on = false;
+            }
+        }
+
         have_line = true;
 #else
         fd_set          read_set;

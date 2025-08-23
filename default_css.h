@@ -4,5 +4,6 @@
 #include <QString>
 
 QString defaultCss();
+void setDefaultCss(const QString &css);
 
 #endif

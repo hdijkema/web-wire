@@ -204,6 +204,9 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
         "   let ids = [];"
         "   nodelist.forEach(function(el) { "
         "      let el_id = el.getAttribute('id');"
+        "      let el_tag = el.nodeName;"
+        "      let el_type = el.getAttribute('type');"
+        "      if (el_type === null) { el_type = ''; }"
         "      if (el_id !== null) {"
         "        el.addEventListener(event_kind, "
         "          function(e) {"
@@ -211,7 +214,8 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
         "             window._web_wire_put_evt(obj);"
         "          }"
         "        );"
-        "        ids.push(el_id);"
+        "        let info = [ el_id, el_tag, el_type ];"
+        "        ids.push(info);"
         "      }"
         "   });"
         "   return 'json:' + JSON.stringify(ids);"
@@ -278,14 +282,14 @@ QString WebWireProfile::profileName()
     return _profile_name;
 }
 
-int WebWireProfile::exec(WebWireHandler *h, int win, int handle, const QString &name, const QString &js)
+int WebWireProfile::exec(WebWireHandler *h, int win, int handle, const QString &name, const QString &js, bool is_void)
 {
     WebWireView *v = h->getView(win);
     WebWirePage *p = v->page();
 
     h->message(js);
 
-    ExecJs *e = new ExecJs(h, win, handle, name);
+    ExecJs *e = new ExecJs(h, win, handle, name, is_void);
     int r_handle = e->handle();
     e->run(p, _world_id, js);
 
@@ -367,13 +371,12 @@ int WebWireProfile::get_style(WebWireHandler *h, int win, int handle, const QStr
 
 int WebWireProfile::set_css(WebWireHandler *h, int win, int handle, const QString &css)
 {
-
-    QString _css = css;
-
-    _css_script.setSourceCode(cssCode(esc(_css)));
+    _css  = css;
+    _css_script.setSourceCode(cssCode(esc(css)));
 
     return exec(h, win, handle, "set-css",
-                _set_css_name + "('" + esc(css) + "');"
+                _set_css_name + "('" + esc(css) + "');",
+                true // no result expected
                 );
 }
 

@@ -16,6 +16,9 @@ WebWireView::WebWireView(WebWireProfile *profile, int win, WebWireHandler *h, QW
     setPage(_page);
 
     this->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+    connect(this, &QWebEngineView::customContextMenuRequested, this, [this](const QPoint &pos) {
+        _handler->evt(QString::asprintf("request-context-menu:%d:%d,%d", _win, pos.x(), pos.y()));
+    });
 
     connect(_page, &WebWirePage::loadFinished, this, &WebWireView::urlProcessed);
 }

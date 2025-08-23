@@ -13,9 +13,11 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonParseError>
+#include <QJsonObject>
 #include <QMenu>
 #include <QMenuBar>
 #include <QSettings>
+#include <QFileDialog>
 
 #include "webwire.h"
 #include "consolelistener.h"
@@ -26,6 +28,7 @@
 #include "execjs.h"
 #include "default_css.h"
 #include "devtoolswindow.h"
+#include "default_css.h"
 
 #ifdef Q_OS_LINUX
 #include <unistd.h>
@@ -318,6 +321,39 @@ defun(cmdBind)
     }
 }
 
+defun(cmdElementInfo)
+{
+    int win = -1;
+    int handle = -1;
+    QString id;
+
+    if (check("element-info", var(integer, win) << var(integer, handle) << var(string, id))) {
+        checkWin;
+
+        QString _id = id;
+        _id = _id.replace("'", "\\'");
+
+        QString js = "{"
+                     "  let el = document.getElementById('" + _id + "');"
+                     "  let obj;"
+                     "  if ((el === null) || (el === undefined)) {"
+                     "    obj = [ '" + _id + "', '', '', false ];"
+                     "  } else {"
+                     "    let type = el.getAttribute('type');"
+                     "    if (type === null) { type = ''; }"
+                     "    obj = [ '" + _id + "', el.nodeName, type, true ];"
+                     "  }"
+                     "  let ret = 'json:' + JSON.stringify(obj);"
+                     "  ret;"
+                     "}";
+
+        int r_handle = h->execJs(win, handle, js, false, "element-info");
+        id = id.replace("\"", "\\\"");
+        r_ok(QString::asprintf("element-info:%d:%d:%s", win, r_handle,
+                               id.toUtf8().constData()));
+    }
+}
+
 defun(cmdValue)
 {
     int win = -1;
@@ -451,31 +487,6 @@ defun(cmdDebug)
 }
 
 
-defun(cmdHelp)
-{
-    msg("new <profile> [<win-id>] -> <win-id> - opens a new web wire window with given profile (for cookie storage).");
-    msg("                                       The optional <win-id> is a parent window, in which case a modal dialog");
-    msg("                                       will be created.");
-    msg("close <win> - closes window <win>. It cannot be used after that");
-    msg("move <win> <x> <y> - moves window <win> to screen coordinates x, y");
-    msg("resize win <width> <height> - resizes window <win> to width, height");
-    msg("set-title <title> - sets the window title");
-    msg("set-icon <file path:<png|jpg|svg>> - sets the window icon to this bitmap file");
-    msg("");
-    msg("set-url <win-id> <url> - set webviewer <win-id> to load the given <url>");
-    msg("set-html <win-id> <file> - set the html content of the web-wire window <win-id> to file <file>.");
-    msg("set-inner-html <win-id> <id> <file|html> - set the inner html of the dom element with id <id> to the contents of <html|file>.");
-    msg("get-inner-html <win-id> <id> - get the inner html of the dom element with id <id>.");
-    msg("");
-    msg("on <win-id> <event> <id> - make the <id> of the html of <win-id> trigger a <event>, ");
-    msg("                           event can be any javascript DOM event, e.g. click, input, mousemove, etc.");
-    msg("value <win-id> <id> [<value>] - get or set the value of id, always returns the current value by event");
-    msg("");
-    msg("exit - exit web racket");
-
-    r_ok("help:given");
-}
-
 defun(cmdMove)
 {
     int win = -1;
@@ -499,6 +510,35 @@ defun(cmdClose)
 
         h->closeWindow(win);
         r_ok(QString::asprintf("close:%d", win));
+    }
+}
+
+defun(cmdSetShowState)
+{
+    int win = -1;
+    QString state;
+    if (check("set-show-state", var(integer, win) << var(string, state))) {
+        checkWin;
+
+        if (state != "minimize" && state != "maximize" && state != "normalize" &&
+            state != "show" && state != "hide" && state != "fullscreen") {
+            r_err(QString::asprintf("set-show-state:%d:", win) + QString("State '") + state + "' is not correct");
+            r_nok(QString::asprintf("set-show-state:%d", win));
+        } else {
+            h->setShowState(win, state);
+            r_ok(QString::asprintf("set-show-state:%d:%s", win, h->showState(win).toUtf8().constData()));
+        }
+    }
+}
+
+defun(cmdShowState)
+{
+    int win = -1;
+    if (check("show-state", var(integer, win))) {
+        checkWin;
+
+        QString st = h->showState(win);
+        r_ok(QString::asprintf("show-state:%d:%s", win, st.toUtf8().constData()));
     }
 }
 
@@ -554,6 +594,68 @@ defun(cmdSetIcon)
     }
 }
 
+defun(cmdFileOpen)
+{
+    int win = -1;
+    QString title;
+    QString directory;
+    QString file_types;
+    if (check("file-open", var(integer, win) << var(string, title) << var(string, directory) << var(string, file_types))) {
+        checkWin;
+
+        bool ok;
+        QString result = h->fileOpen(win, title, directory, file_types, ok);
+        if (ok) {
+            QString r = QString("\"") + result.replace("\"", "\\\"") + "\"";
+            r_ok(QString::asprintf("file-open:%d:%s", win, r.toUtf8().constData()));
+        } else {
+            r_nok(QString::asprintf("file-open:%d", win));
+        }
+    }
+}
+
+defun(cmdFileSave)
+{
+    int win = -1;
+    QString title;
+    QString directory;
+    QString file_types;
+    bool overwrite = false;
+
+    if (check("file-save", var(integer, win) << var(string, title) << var(string, directory) << var(string, file_types) << opt(boolean, overwrite, false))) {
+        checkWin;
+
+        bool ok;
+        QString result = h->fileSave(win, title, directory, file_types, overwrite, ok);
+        if (ok) {
+            QString r = QString("\"") + result.replace("\"", "\\\"") + "\"";
+            r_ok(QString::asprintf("file-save:%d:%s", win, r.toUtf8().constData()));
+        } else {
+            r_nok(QString::asprintf("file-save:%d", win));
+        }
+    }
+}
+
+defun(cmdChooseDir)
+{
+    int win = -1;
+    QString title;
+    QString directory;
+    if (check("choose-dir", var(integer, win) << var(string, title) << var(string, directory))) {
+        checkWin;
+
+        bool ok;
+        QString result = h->chooseDir(win, title, directory, ok);
+        if (ok) {
+            QString r = QString("\"") + result.replace("\"", "\\\"") + "\"";
+            r_ok(QString::asprintf("file-open:%d:%s", win, r.toUtf8().constData()));
+        } else {
+            r_nok(QString::asprintf("file-open:%d", win));
+        }
+    }
+}
+
+
 defun(cmdNewWindow)
 {
     QString profile;
@@ -582,6 +684,61 @@ defun(cmdProtocol)
 {
     r_ok(QString::asprintf("protocol:%s", WEB_WIRE_PROTOCOL_VERSION));
 }
+
+defun(cmdSetStylesheet)
+{
+    QString json_css;
+    int win = 0;
+    if (check("set-stylesheet", var(string, json_css))) {
+        QJsonParseError err;
+        QJsonDocument doc = QJsonDocument::fromJson(json_css.toUtf8(), &err);
+        if (err.error != QJsonParseError::NoError) {
+            r_nok(QString("set-stylesheet:error") + err.errorString());
+        } else {
+            QJsonObject obj = doc.object();
+            QString css = obj["css"].toString();
+            h->setStylesheet(css);
+            r_ok(QString("set-stylesheet:done"));
+        }
+    }
+}
+
+defun(cmdGetStyleheet)
+{
+    QString css = h->getStylesheet();
+    QJsonDocument doc;
+    QJsonObject obj;
+    obj["css"] = css;
+    doc.setObject(obj);
+    QString json = doc.toJson(QJsonDocument::Compact);
+    r_ok(QString("get-stylesheet:") + json);
+}
+
+defun(cmdHelp)
+{
+    msg("new <profile> [<win-id>] -> <win-id> - opens a new web wire window with given profile (for cookie storage).");
+    msg("                                       The optional <win-id> is a parent window, in which case a modal dialog");
+    msg("                                       will be created.");
+    msg("close <win> - closes window <win>. It cannot be used after that");
+    msg("move <win> <x> <y> - moves window <win> to screen coordinates x, y");
+    msg("resize win <width> <height> - resizes window <win> to width, height");
+    msg("set-title <title> - sets the window title");
+    msg("set-icon <file path:<png|jpg|svg>> - sets the window icon to this bitmap file");
+    msg("");
+    msg("set-url <win-id> <url> - set webviewer <win-id> to load the given <url>");
+    msg("set-html <win-id> <file> - set the html content of the web-wire window <win-id> to file <file>.");
+    msg("set-inner-html <win-id> <id> <file|html> - set the inner html of the dom element with id <id> to the contents of <html|file>.");
+    msg("get-inner-html <win-id> <id> - get the inner html of the dom element with id <id>.");
+    msg("");
+    msg("on <win-id> <event> <id> - make the <id> of the html of <win-id> trigger a <event>, ");
+    msg("                           event can be any javascript DOM event, e.g. click, input, mousemove, etc.");
+    msg("value <win-id> <id> [<value>] - get or set the value of id, always returns the current value by event");
+    msg("");
+    msg("exit - exit web racket");
+
+    r_ok("help:given");
+}
+
 
 #undef msg
 #undef view
@@ -613,12 +770,20 @@ void WebWireHandler::processCommand(const QString &cmd, const QStringList &args)
     efun("cwd", cmdCwd)
     efun("on", cmdOn)
     efun("bind", cmdBind)
+    efun("element-info", cmdElementInfo)
     efun("value", cmdValue)
     efun("set-menu", cmdSetMenu)
     efun("protocol", cmdProtocol)
     efun("add-class", cmdAddClass)
     efun("remove-class", cmdRemoveClass)
     efun("debug", cmdDebug)
+    efun("set-show-state", cmdSetShowState)
+    efun("show-state", cmdShowState)
+    efun("set-stylesheet", cmdSetStylesheet)
+    efun("get-stylesheet", cmdGetStyleheet)
+    efun("file-open", cmdFileOpen)
+    efun("file-save", cmdFileSave)
+    efun("choose-dir", cmdChooseDir)
     else {
         WebWireHandler *h = this;
         r_err(QString::asprintf("Unknown command '%s'", cmd.toUtf8().data()));
@@ -628,7 +793,7 @@ void WebWireHandler::processCommand(const QString &cmd, const QStringList &args)
 
 void WebWireHandler::addErr(const QString &msg)
 {
-    _reasons.prepend(msg);
+    _reasons.append(msg);
 }
 
 void WebWireHandler::addOk(const QString &msg)
@@ -713,9 +878,9 @@ void WebWireHandler::processInput(const QString &line)
     QString l = line.trimmed();
     QStringList expr = splitArgs(l);
 
-    if (!expr.empty() && expr.last() == "") {
-        expr.removeLast();
-    }
+    //if (!expr.empty() && expr.last() == "") {
+    //    expr.removeLast();
+    //}
     if (expr.size() > 0) {
         QString cmd = expr[0].toLower();
         expr.remove(0);
@@ -726,14 +891,24 @@ void WebWireHandler::processInput(const QString &line)
     }
 
     if (_reasons.size() > 0) {
-        QString msg = _reasons.join(", ");
-        error(msg);
+        int i;
+        for(i = 0; i < _reasons.size(); i++) {
+            QString msg = _reasons[i];
+            error(msg);
+        }
     }
 
     if (_responses.size() > 0) {
         QString msg = _responses.join(", ");
         ok(msg);
     }
+}
+
+void WebWireHandler::inputStopped()
+{
+    log(nullptr, _log_fh, "Unexpected:%s", "Input has stopped");
+    closeListener();
+    doQuit();
 }
 
 bool WebWireHandler::getArgs(QString cmd, int win, QList<Var> types, QStringList args)
@@ -746,6 +921,8 @@ bool WebWireHandler::getArgs(QString cmd, int win, QList<Var> types, QStringList
 
     if (args.size() < get_min_arg_count()) {
         addErr(cmd + QString::asprintf(": incorrect number of arguments %lld, minimal expected %d", args.size(), get_min_arg_count()));
+        QString g("  got:");
+        addErr(g + args.join(" "));
         addNOk(cmd + QString::asprintf(":%d", win));
         return false;
     }
@@ -793,9 +970,15 @@ void WebWireHandler::log(FILE *fh, FILE *log_fh, const char *format, const char 
     for(i = 0, N = strlen(msg), nl = 1; i < N; i++) {
         if (msg[i] == '\n') nl++;
     }
-    fprintf(log_fh, format, nl, msg);
-    fprintf(fh, format, nl, msg);
-    fflush(fh);
+    if (log_fh != nullptr) {
+        fprintf(log_fh, format, nl, msg);
+        fflush(log_fh);
+    }
+
+    if (fh != nullptr) {
+        fprintf(fh, format, nl, msg);
+        fflush(fh);
+    }
 }
 
 void WebWireHandler::error(const QString &msg)
@@ -839,6 +1022,23 @@ void WebWireHandler::doQuit()
     _app->quit();
 }
 
+void WebWireHandler::setStylesheet(const QString &css)
+{
+    setDefaultCss(css);
+    QList<int> wins = _windows.keys();
+    int i;
+    for(i = 0; i < wins.size(); i++) {
+        int win = wins[i];
+        WinInfo_t *i = getWinInfo(win);
+        i->profile->set_css(this, win, -1, css);
+    }
+}
+
+QString WebWireHandler::getStylesheet()
+{
+    return defaultCss();
+}
+
 
 static QString pid()
 {
@@ -856,6 +1056,7 @@ WebWireHandler::WebWireHandler(QApplication *app, int argc, char *argv[]) : QObj
     _app = app;
     _listener = new ConsoleListener(this);
     connect(_listener, &ConsoleListener::newLine, this, &WebWireHandler::processInput);
+    connect(_listener, &ConsoleListener::stopped, this, &WebWireHandler::inputStopped);
     _window_nr = 0;
     _code_handle = 0;
 
@@ -878,7 +1079,7 @@ WebWireHandler::WebWireHandler(QApplication *app, int argc, char *argv[]) : QObj
 
     QString log_file = _my_dir.absoluteFilePath("webracket.log");
 #ifdef Q_OS_WIN
-    fopen_s(&_log_fh, log_file.toUtf8().data(), "wt");
+    _log_fh = _fsopen(log_file.toUtf8().data(), "wt", _SH_DENYNO);
 #else
     _log_fh = fopen(log_file.toUtf8().data(), "wt");
 #endif
@@ -947,6 +1148,11 @@ void WebWireHandler::windowCloses(int win, bool do_close)
 
         evt(QString::asprintf("closed:%d", win));
     }
+}
+
+void WebWireHandler::requestClose(int win)
+{
+    evt(QString::asprintf("request-close:%d", win));
 }
 
 void WebWireHandler::windowResized(int win, int w, int h)
@@ -1062,7 +1268,10 @@ WinInfo_t *WebWireHandler::getWinInfo(int win)
 bool WebWireHandler::closeWindow(int win)
 {
     WebWireWindow *w = getWindow(win);
-    if (w != nullptr) w->close();
+    if (w != nullptr) {
+        w->setClosing(true);
+        w->close();
+    }
     return w != nullptr;
 }
 
@@ -1186,6 +1395,58 @@ bool WebWireHandler::setMenu(int win, const QString &menu)
             return false;
         }
     }
+}
+
+void WebWireHandler::setShowState(int win, const QString &state)
+{
+    WebWireWindow *w = getWindow(win);
+    w->setShowState(state);
+}
+
+QString WebWireHandler::showState(int win)
+{
+    WebWireWindow *w = getWindow(win);
+    return w->showState();
+}
+
+QString WebWireHandler::fileOpen(int win, const QString &title, const QString &dir, const QString &file_types, bool &ok)
+{
+    WebWireWindow *w = getWindow(win);
+    QString fn = QFileDialog::getOpenFileName(w, title, dir, file_types);
+    if (fn.isNull()) {
+        ok = false;
+    } else {
+        ok = true;
+    }
+    return fn;
+}
+
+QString WebWireHandler::fileSave(int win, const QString &title, const QString &dir, const QString &file_types, bool overwrite, bool &ok)
+{
+    WebWireWindow *w = getWindow(win);
+
+    QFileDialog::Options o = QFlags<QFileDialog::Option>();
+    if (overwrite) { o.setFlag(QFileDialog::DontConfirmOverwrite, true); }
+
+    QString fn = QFileDialog::getSaveFileName(w, title, dir, file_types, nullptr, o);
+    if (fn.isNull()) {
+        ok = false;
+    } else {
+        ok = true;
+    }
+    return fn;
+}
+
+QString WebWireHandler::chooseDir(int win, const QString &title, const QString &dir, bool &ok)
+{
+    WebWireWindow *w = getWindow(win);
+    QString fn = QFileDialog::getExistingDirectory(w, title, dir);
+    if (fn.isNull()) {
+        ok = false;
+    } else {
+        ok = true;
+    }
+    return fn;
 }
 
 

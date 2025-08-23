@@ -35,7 +35,7 @@ private:
 
 private:
     QString esc(const QString &in);
-    int exec(WebWireHandler *h, int win, int handle, const QString &name, const QString &js);
+    int exec(WebWireHandler *h, int win, int handle, const QString &name, const QString &js, bool is_void = false);
     
 public:
     explicit WebWireProfile(const QString &name, const QString &default_css, QObject *parent = nullptr);
