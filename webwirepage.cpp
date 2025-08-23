@@ -34,14 +34,19 @@ void WebWirePage::getEvents(void)
                 _handler->error("Cannot interpret events from HTML: " + err.errorString());
                 _handler->error("Got: " + str);
             } else {
-                _handler->message(str);
+                //_handler->message(str);
                 QJsonArray events = doc.array();
                 int i;
                 for(i = 0; i < events.size(); i++) {
                     QJsonObject obj = events[i].toObject();
-                    QString evt = obj["evt"].toString();
+                    QString evt = "js-" + obj["evt"].toString();
                     QString id = obj["id"].toString();
-                    QString js_evt = obj["js_evt"].toString();
+                    QString js_evt;
+                    QJsonDocument doc;
+                    QJsonObject o;
+                    o["data"] = obj["js_evt"];
+                    doc.setObject(o);
+                    js_evt = doc.toJson(QJsonDocument::Compact);
                     _handler->evt(evt + ":" + QString::number(_win) + ":" + id + ":" + js_evt);
                 }
             }

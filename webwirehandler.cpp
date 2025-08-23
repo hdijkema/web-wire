@@ -200,6 +200,23 @@ defun(cmdGetAttr)
     }
 }
 
+defun(cmdDelAttr)
+{
+    int win = -1;
+    int handle = -1;
+    QString id;
+    QString attr;
+
+    if (check("del-attr", var(integer, win) << var(integer, handle) << var(string, id) << var(string, attr))) {
+        checkWin;
+
+        int r_handle;
+        WinInfo_t *i = h->getWinInfo(win);
+        r_handle = i->profile->del_attr(h, win, handle, id, attr);
+        r_ok(QString::asprintf("del-attr:%d:%d", win , r_handle));
+    }
+}
+
 defun(cmdSetStyle)
 {
     int win = -1;
@@ -267,7 +284,7 @@ defun(cmdOn)
                                   "     el.addEventListener("
                                   "        '" + event + "', "
                                   "        function(e) {"
-                                  "           let obj = {evt: '" + event + "', id: '" + id +"', js_evt: window._web_wire_event_info('" + event + "', e) };"
+                                  "           let obj = {evt: '" + event + "', id: '" + id +"', js_evt: window._web_wire_event_info('" + event + "', '" + id + "', e) };"
                                   "           window._web_wire_put_evt(obj);"
                                   "        }"
                                   "     );"
@@ -589,6 +606,7 @@ void WebWireHandler::processCommand(const QString &cmd, const QStringList &args)
     efun("get-inner-html", cmdGetInnerHtml)
     efun("set-attr", cmdSetAttr)
     efun("get-attr", cmdGetAttr)
+    efun("del-attr", cmdDelAttr)
     efun("add-style", cmdAddStyle)
     efun("set-style", cmdSetStyle)
     efun("get-style", cmdGetStyle)

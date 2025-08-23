@@ -7,6 +7,17 @@
 #include "webwirehandler.h"
 #include "execjs.h"
 
+static QString cssCode(const QString &css)
+{
+   return QString("{") +
+   "let styles ='" + css + "';" +
+   "let stylesheet = document.createElement('style');"
+   "stylesheet.setAttribute('id', 'web-wire-css');"
+   "stylesheet.textContent = styles;"
+   "document.head.appendChild(stylesheet);"
+   "}";
+}
+
 QString WebWireProfile::esc(const QString &in)
 {
     QString s = in;
@@ -30,21 +41,21 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
         QString::asprintf(
             "window.dom_set_html_%d = function(id, data, do_fetch) {"
             "  let el = document.getElementById(id);"
-            "  if (el !== undefined) {"
+            "  if (el !== undefined && el !== null) {"
             "     if (do_fetch) { "
             "        fetch(data).then(x => x.text()).then(y => el.innerHTML = y);"
             "     } else {"
             "       el.innerHTML = data;"
             "     }"
-            "     return true;"
+            "     return 'bool:true';"
             "  } else {"
             "    console.error('element with id ' + id + ' not found');"
-            "    return false;"
+            "    return 'bool:false';"
             "  }"
             "};"
             "window.dom_get_html_%d = function(id) {"
             "  let el = document.getElementById(id);"
-            "  if (el !== undefined) {"
+            "  if (el !== undefined && el !== null) {"
             "     return el.innerHTML;"
             "  } else {"
             "     return '';"
@@ -52,16 +63,16 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
             "};"
             "window.dom_set_attr_%d = function(id, attr, val) {"
             "  let el = document.getElementById(id);"
-            "  if (el === undefined) {"
-            "     return false;"
+            "  if (el === undefined || el === null) {"
+            "     return 'bool:false';"
             "  } else {"
             "     el.setAttribute(attr, val);"
-            "     return true;"
+            "     return 'bool:true';"
             "  }"
             "};"
             "window.dom_get_attr_%d = function(id, attr) {"
             "  let el = document.getElementById(id);"
-            "  if (el === undefined) {"
+            "  if (el === undefined || el === null) {"
             "    return '';"
             "  } else {"
             "    let v = el.getAttribute(attr);"
@@ -71,11 +82,11 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
             "};"
             "window.dom_del_attr_%d = function(id, attr) {"
             "  let el = document.getElementById(id);"
-            "  if (el === undefined) {"
-            "    return false;"
+            "  if (el === undefined || el === null) {"
+            "    return 'bool:false';"
             "  } else {"
             "    el.removeAttribute(attr);"
-            "    return true;"
+            "    return 'bool:true';"
             "  }"
             "};"
             "window.split_style_%d = function(st) {"
@@ -114,6 +125,15 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
             "window.dom_get_style_%d = function(id) {"
             "  return window.dom_get_attr_%d(id, 'style');"
             "};"
+            "window.dom_set_css_%d = function(css) {"
+            "  let stylesheet = document.getElementById('web-wire-css');"
+            "  if (stylesheet) {"
+            "     stylesheet.textContent = css;"
+            "     return 'bool:true';"
+            "  }"
+            "  return 'bool:false';"
+            "};"
+            ""
             "console.log('Set all window.<functions');",
             world_id,   // set_html
             world_id,   // get_html
@@ -123,7 +143,8 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
             world_id,   // split_style
             world_id, world_id, world_id, world_id, world_id,   // add_style
             world_id, world_id,                                 // set_style
-            world_id, world_id                                  // get_style
+            world_id, world_id,                                 // get_style
+            world_id                                            // set-css
             )
         );
 
@@ -135,13 +156,16 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
         QString() +
         "window._web_wire_evt_queue = [];"
         "window._web_wire_put_evt = function(evt) { _web_wire_evt_queue.push(evt); };"
-        "window._web_wire_event_info = function(e, evt) {"
+        "window._web_wire_event_info = function(e, id, evt) {"
         "  let obj = {};"
         "  if (e == 'input') {"
         "     obj['data'] = evt.data;"
         "     obj['dataTransfer'] = evt.dataTransfer;"
         "     obj['inputType'] = evt.inputType;"
         "     obj['isComposing'] = evt.isComposing;"
+        "     obj['value'] = document.getElementById(id).value;"
+        "  } else if (e == 'change') {"
+        "     obj['value'] = document.getElementById(id).value;"
         "  } else if (e == 'mousemove' || e == 'mouseover' || e == 'mouseenter' || "
                     "e == 'mouseleave' || e == 'click' || e == 'dblclick' || "
                     "e == 'mousedown' || e == 'mouseup' ) {"
@@ -168,12 +192,12 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
         "     obj['shiftKey'] = evt.shiftKey;"
         "  }"
                     // More events can be added like pointerEvent, clipboardEvent, etc.
-        "  return JSON.stringify(obj);"
+        "  return obj;"
         "};"
         "window._web_wire_get_evts = function() {"
         "   let v = _web_wire_evt_queue;"
         "   _web_wire_evt_queue = [];"
-        "   return JSON.stringify(v);"
+        "   return JSON.stringify(v);"      // This needs no extra type info, as it is internally used only
         "};"
         "window._web_wire_bind_evt_ids = function(selector, event_kind) {"
         "   let nodelist = document.querySelectorAll(selector);"
@@ -183,14 +207,14 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
         "      if (el_id !== null) {"
         "        el.addEventListener(event_kind, "
         "          function(e) {"
-        "             let obj = {evt: event_kind, id: el_id, js_evt: window._web_wire_event_info(event_kind, e) };"
+        "             let obj = {evt: event_kind, id: el_id, js_evt: window._web_wire_event_info(event_kind, el_id, e) };"
         "             window._web_wire_put_evt(obj);"
         "          }"
         "        );"
         "        ids.push(el_id);"
         "      }"
         "   });"
-        "   return JSON.stringify(ids);"
+        "   return 'json:' + JSON.stringify(ids);"
         "};"
     );
 
@@ -198,12 +222,7 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
     _css_script.setName("css");
     _css_script.setRunsOnSubFrames(true);
     _css_script.setInjectionPoint(QWebEngineScript::DocumentReady);
-    _css_script.setSourceCode(QString("{") +
-                              "let styles ='" + _css + "';" +
-                              "let stylesheet = document.createElement('style');"
-                              "stylesheet.textContent = styles;"
-                              "document.head.appendChild(stylesheet);"
-                              "}");
+    _css_script.setSourceCode(cssCode(esc(_css)));
 
     QWebEngineScriptCollection *col = scripts();
     col->clear();
@@ -217,6 +236,7 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
     _add_style_name = QString::asprintf("window.dom_add_style_%d", world_id);
     _set_style_name = QString::asprintf("window.dom_set_style_%d", world_id);
     _get_style_name = QString::asprintf("window.dom_get_style_%d", world_id);
+    _set_css_name = QString::asprintf("window.dom_set_css_%d", world_id);
 
     _world_id = dom_access.worldId();
 
@@ -347,7 +367,14 @@ int WebWireProfile::get_style(WebWireHandler *h, int win, int handle, const QStr
 
 int WebWireProfile::set_css(WebWireHandler *h, int win, int handle, const QString &css)
 {
-    return handle;
+
+    QString _css = css;
+
+    _css_script.setSourceCode(cssCode(esc(_css)));
+
+    return exec(h, win, handle, "set-css",
+                _set_css_name + "('" + esc(css) + "');"
+                );
 }
 
 

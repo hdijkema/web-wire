@@ -26,6 +26,7 @@ private:
     QString _add_style_name;
     QString _set_style_name;
     QString _get_style_name;
+    QString _set_css_name;
 
 private:
     int _world_id;
@@ -35,7 +36,7 @@ private:
 private:
     QString esc(const QString &in);
     int exec(WebWireHandler *h, int win, int handle, const QString &name, const QString &js);
-
+    
 public:
     explicit WebWireProfile(const QString &name, const QString &default_css, QObject *parent = nullptr);
 
