@@ -14,6 +14,8 @@ static QString makeResult(WebWireHandler *h, const QVariant &v)
     QJsonObject obj;
     QJsonDocument doc;
 
+    h->message(QString("makeResult:") + in);
+
     if (in.startsWith("json:")) {
         QJsonParseError err;
         QJsonDocument d = QJsonDocument::fromJson(in.mid(5).toUtf8(), &err);

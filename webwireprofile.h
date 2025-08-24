@@ -22,11 +22,13 @@ private:
     QString _get_html_name;
     QString _set_attr_name;
     QString _get_attr_name;
+    QString _get_attrs_name;
     QString _del_attr_name;
     QString _add_style_name;
     QString _set_style_name;
     QString _get_style_name;
     QString _set_css_name;
+    QString _get_elements_name;
 
 private:
     int _world_id;
@@ -52,6 +54,7 @@ public:
 
     int set_attr(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &attr, const QString &val);
     int get_attr(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &attr);
+    int get_attrs(WebWireHandler *h, int win, int handle, const QString &element_id);
     int del_attr(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &attr);
 
     int add_style(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &style);
@@ -59,6 +62,8 @@ public:
     int get_style(WebWireHandler *h, int win, int handle, const QString &element_id);
 
     int set_css(WebWireHandler *h, int win, int handle, const QString &css);
+
+    int get_elements(WebWireHandler *h, int win, int handle, const QString &selector);
 };
 
 #endif // WEBWIREPROFILE_H

@@ -203,6 +203,38 @@ defun(cmdGetAttr)
     }
 }
 
+defun(cmdGetAttrs)
+{
+    int win = -1;
+    int handle = -1;
+    QString id;
+
+    if (check("get-attrs", var(integer, win) << var(integer, handle) << var(string, id))) {
+        checkWin;
+
+        int r_handle;
+        WinInfo_t *i = h->getWinInfo(win);
+        r_handle = i->profile->get_attrs(h, win, handle, id);
+        r_ok(QString::asprintf("get-attrs:%d:%d", win, r_handle));
+    }
+}
+
+defun(cmdGetElements)
+{
+    int win = -1;
+    int handle = -1;
+    QString selector;
+
+    if (check("get-attrs", var(integer, win) << var(integer, handle) << var(string, selector))) {
+        checkWin;
+
+        int r_handle;
+        WinInfo_t *i = h->getWinInfo(win);
+        r_handle = i->profile->get_elements(h, win, handle, selector);
+        r_ok(QString::asprintf("get-elements:%d:%d", win, r_handle));
+    }
+}
+
 defun(cmdDelAttr)
 {
     int win = -1;
@@ -763,6 +795,8 @@ void WebWireHandler::processCommand(const QString &cmd, const QStringList &args)
     efun("get-inner-html", cmdGetInnerHtml)
     efun("set-attr", cmdSetAttr)
     efun("get-attr", cmdGetAttr)
+    efun("get-attrs", cmdGetAttrs)
+    efun("get-elements", cmdGetElements)
     efun("del-attr", cmdDelAttr)
     efun("add-style", cmdAddStyle)
     efun("set-style", cmdSetStyle)

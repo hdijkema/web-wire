@@ -133,8 +133,37 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
             "  }"
             "  return 'bool:false';"
             "};"
-            ""
-            "console.log('Set all window.<functions');",
+            "window.dom_get_attrs_%d = function(id) {"
+            "  let el = document.getElementById(id);"
+            "  if (el === undefined || el === null) {"
+            "     return 'json:[]';"
+            "  } else {"
+            "    let res = [];"
+            "    let attr_names = el.getAttributeNames();"
+            "    for(const name of attr_names) {"
+            "       res.push([name, el.getAttribute(name)]);"
+            "    }"
+            "    let ret = 'json:' + JSON.stringify(res);"
+            "    return ret;"
+            "  }"
+            "};"
+            "window.dom_get_elements_%d = function(selector) {"
+            "  let nodelist = document.querySelectorAll(selector);"
+            "  if (nodelist === undefined || nodelist === null) {"
+            "     return 'json:[]';"
+            "  } else {"
+            "    let els = [];"
+            "    nodelist.forEach(function(el) { "
+            "      let attr_names = el.getAttributeNames();"
+            "      let attrs = [];"
+            "      for(const name of attr_names) {"
+            "         attrs.push([name, el.getAttribute(name)]);"
+            "      }"
+            "      els.push([el.nodeName, attrs]);"
+            "    });"
+            "    return 'json:' + JSON.stringify(els);"
+            "  }"
+            "};",
             world_id,   // set_html
             world_id,   // get_html
             world_id,   // set_attr
@@ -144,7 +173,9 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
             world_id, world_id, world_id, world_id, world_id,   // add_style
             world_id, world_id,                                 // set_style
             world_id, world_id,                                 // get_style
-            world_id                                            // set-css
+            world_id,                                            // set-css
+            world_id,    // get-attrs
+            world_id     // get-elements
             )
         );
 
@@ -201,6 +232,9 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
         "};"
         "window._web_wire_bind_evt_ids = function(selector, event_kind) {"
         "   let nodelist = document.querySelectorAll(selector);"
+        "   if (nodelist === undefined || nodelist === null) {"
+        "      return 'json:[]';"
+        "   }"
         "   let ids = [];"
         "   nodelist.forEach(function(el) { "
         "      let el_id = el.getAttribute('id');"
@@ -236,10 +270,12 @@ WebWireProfile::WebWireProfile(const QString &name, const QString &default_css, 
     _get_html_name = QString::asprintf("window.dom_get_html_%d", world_id);
     _set_attr_name = QString::asprintf("window.dom_set_attr_%d", world_id);
     _get_attr_name = QString::asprintf("window.dom_get_attr_%d", world_id);
+    _get_attrs_name = QString::asprintf("window.dom_get_attrs_%d", world_id);
     _del_attr_name = QString::asprintf("window.dom_del_attr_%d", world_id);
     _add_style_name = QString::asprintf("window.dom_add_style_%d", world_id);
     _set_style_name = QString::asprintf("window.dom_set_style_%d", world_id);
     _get_style_name = QString::asprintf("window.dom_get_style_%d", world_id);
+    _get_elements_name = QString::asprintf("window.dom_get_elements_%d", world_id);
     _set_css_name = QString::asprintf("window.dom_set_css_%d", world_id);
 
     _world_id = dom_access.worldId();
@@ -333,6 +369,23 @@ int WebWireProfile::get_attr(WebWireHandler *h, int win, int handle, const QStri
                                     ");"
               );
 }
+
+int WebWireProfile::get_attrs(WebWireHandler *h, int win, int handle, const QString &element_id)
+{
+    return exec(h, win, handle, "get-attrss",
+                _get_attrs_name + "(" +  "'" + esc(element_id) + "'" +
+                    ");"
+                );
+}
+
+int WebWireProfile::get_elements(WebWireHandler *h, int win, int handle, const QString &selector)
+{
+    return exec(h, win, handle, "get-attrss",
+                _get_elements_name + "(" +  "'" + esc(selector) + "'" +
+                    ");"
+                );
+}
+
 
 int WebWireProfile::del_attr(WebWireHandler *h, int win, int handle, const QString &element_id, const QString &attr)
 {

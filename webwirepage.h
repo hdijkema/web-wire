@@ -16,6 +16,7 @@ private:
     int             _win;
     bool            _accept_next_navigation;
     QTimer          _evt_timer;
+    QString         _navigation_event;
 
 public:
     void acceptNextNavigation();

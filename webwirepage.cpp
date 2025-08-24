@@ -58,6 +58,12 @@ void WebWirePage::startTimer(bool ok)
 {
     _evt_timer.setInterval(EVENT_CHECK_INTERVAL);
     _evt_timer.start();
+
+    // See acceptNavigationRequest() for why this is here.
+    if (_navigation_event != "") {
+        _handler->evt(_navigation_event);
+        _navigation_event = "";
+    }
 }
 
 void WebWirePage::stopTimer(void)
@@ -92,18 +98,19 @@ bool WebWirePage::acceptNavigationRequest(const QUrl &url, NavigationType type, 
             break;
     }
 
-    if (url.scheme() == "click") {
-        QString s = url.toString();
-        static QRegularExpression re("([^:]+)[:](.*)");
-        QRegularExpressionMatch m = re.match(s);
-        //QString click = m.captured(1);
-        QString id = m.captured(2);
-        id = id.replace("\"", "\\\"");
-        _handler->evt(QString::asprintf("click:%d:", _win) + QString("\"") + id + "\"");
-    } else {
-        QString u = url.toString().replace("\"", "\\\"");
-        _handler->evt(QString("navigate:") + QString::asprintf("%d:", _win) + "\"" + u + "\":" + navigation_type);
+    QString u = url.toString();
+    WinInfo_t *i = _handler->getWinInfo(_win);
+    QString navigation_kind = "set-url";
+    if (u.startsWith(i->base_url)) {
+        navigation_kind = "set-html";
+        u = u.mid(i->base_url.length());
     }
+
+    QString r_u = u.replace("\"", "\\\"");
+    // We need to postpone the url handling until loadFinished, otherwise we don't get the right results.
+    // Loading will interfere between set-html / set-url commands and this running command.
+    // So we put this to be give event already there for startTimer (which is called on loadFinish) to handle.
+    _navigation_event = QString("navigate:") + QString::asprintf("%d:", _win) + "\"" + r_u + "\":" + navigation_type + ":" + navigation_kind;
 
     return false;
 }
